@@ -1,0 +1,64 @@
+#!/bin/sh
+
+set -e
+
+#
+# Arguments
+#
+
+if [[ -z "${1}" ]]; then
+  echo "usage: ${0} <client-name>"
+  exit 1
+fi
+
+#
+# Variables
+#
+
+script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+client_name="${1}"
+easyrsa_path="${script_path}/../easy-rsa"
+server_path="${script_path}/../server"
+client_path="${script_path}/../client"
+
+#
+# Issue certificates
+#
+
+"${easyrsa_path}/easyrsa" build-client-full "${client_name}" nopass
+
+#
+# Create OpenVPN embedded config
+#
+
+mkdir -p "${client_path}"
+{
+  cat "${server_path}/client.conf"
+
+  echo '# ca.crt'
+  echo '<ca>'
+  cat "${easyrsa_path}/pki/ca.crt"
+  echo '</ca>'
+
+  echo '# client.crt'
+  echo '<cert>'
+  cat "${easyrsa_path}/pki/issued/${client_name}.crt"
+  echo '</cert>'
+
+  echo '# client.key'
+  echo '<key>'
+  cat "${easyrsa_path}/pki/private/${client_name}.key"
+  echo '</key>'
+
+  echo '# ta.key'
+  echo '<tls-auth>'
+  cat "${easyrsa_path}/pki/ta.key"
+  echo '</tls-auth>'
+} > "${client_path}/${client_name}.ovpn"
+
+#
+# Create OpenVPN CCD file for static IP assignment
+#
+
+mkdir -p "${server_path}/ccd"
+echo 'ifconfig-push 10.8.0.234 255.255.255.0' >>"${server_path}/ccd/${client_name}"

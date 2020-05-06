@@ -1,0 +1,112 @@
+#!/bin/sh
+
+set -e
+
+#
+# Arguments
+#
+
+if [[ -z "${2}" ]]; then
+  echo "usage: ${0} <server-name> <config-path>"
+  exit 1
+fi
+
+#
+# Variables
+#
+
+script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+server_name="${1}"
+config_path="${2}"
+easyrsa_path="${script_path}/../easy-rsa"
+server_path="${script_path}/../server"
+client_path="${script_path}/../client"
+templates_path="${script_path}/../templates"
+
+#
+# Cleanup
+#
+
+rm -rf "${easyrsa_path}-git" "${easyrsa_path}" "${client_path}" "${server_path}" "${server_path}/ccd"
+mkdir -p "${easyrsa_path}" "${client_path}" "${server_path}" "${server_path}/ccd"
+
+#
+# Download EasyRSA
+#
+
+mkdir -p "${easyrsa_path}-git"
+git clone 'git://github.com/OpenVPN/easy-rsa.git' "${easyrsa_path}-git"
+cd "${easyrsa_path}-git"
+rm -rf ./dist-staging
+./build/build-dist.sh --no-windows --no-compress
+
+cp -R \
+  ./dist-staging/unix/EasyRSA-git-development/easyrsa \
+  ./dist-staging/unix/EasyRSA-git-development/x509-types \
+  ./dist-staging/unix/EasyRSA-git-development/openssl-easyrsa.cnf \
+  "${templates_path}/vars" \
+  "${easyrsa_path}"
+chmod a+x "${easyrsa_path}/easyrsa"
+
+cd "${script_path}"
+rm -rf "${easyrsa_path}-git"
+
+#
+# Open editor to configure EasyRSA
+#
+
+${EDITOR:-vim} "${easyrsa_path}/vars"
+
+#
+# Initialize PKI
+#
+
+"${easyrsa_path}/easyrsa" init-pki
+
+#
+# Build certificate authority
+#
+
+"${easyrsa_path}/easyrsa" build-ca
+
+#
+# Issue server certificate
+#
+
+"${easyrsa_path}/easyrsa" build-server-full server nopass
+
+#
+# Generate Diffie-Hellman parameters
+#
+
+"${easyrsa_path}/easyrsa" gen-dh
+
+#
+# Generate certificate revokation list
+#
+
+"${easyrsa_path}/easyrsa" gen-crl
+
+#
+# Generate shared TLS authentication key
+#
+
+openvpn --genkey --secret "${easyrsa_path}/pki/ta.key"
+
+#
+# Server configuration
+#
+
+sed \
+  -e "s!ServerName!${server_name}!g" \
+  -e "s!ConfigPath!${config_path}!g" \
+  "${templates_path}/server.conf" > "${server_path}/server.conf"
+
+#
+# Server template
+#
+
+sed \
+  -e "s!ServerName!${server_name}!g" \
+  -e "s!ConfigPath!${config_path}!g" \
+  "${templates_path}/client.conf" > "${server_path}/client.conf"

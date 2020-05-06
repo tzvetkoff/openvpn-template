@@ -1,0 +1,40 @@
+#!/bin/sh
+
+set -e
+
+#
+# Arguments
+#
+
+if [[ -z "${1}" ]]; then
+  echo "usage: ${0} <client-name>"
+  exit 1
+fi
+
+#
+# Variables
+#
+
+script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+client_name="${1}"
+easyrsa_path="${script_path}/../easy-rsa"
+server_path="${script_path}/../server"
+client_path="${script_path}/../client"
+
+#
+# Revoke certificates
+#
+
+"${easyrsa_path}/easyrsa" revoke "${client_name}"
+
+#
+# Update revokation list
+#
+
+"${easyrsa_path}/easyrsa" gen-crl
+
+#
+# Remove leftovers
+#
+
+rm "${server_path}/ccd/${client_name}" "${client_path}/${client_name}.ovpn"
