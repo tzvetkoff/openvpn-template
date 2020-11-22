@@ -1,5 +1,5 @@
-#!/bin/sh
-# vim: ft=sh ts=2 et
+#!/usr/bin/env bash
+# vim:ft=sh:ts=2:sts=2:sw=2:et
 
 if [ -z "${EASYRSA_CALLER}" ]; then
   echo "You appear to be sourcing an Easy-RSA 'vars' file." >&2
@@ -26,3 +26,4 @@ set_var EASYRSA_ALGO            rsa
 set_var EASYRSA_CURVE           secp384r1
 set_var EASYRSA_CA_EXPIRE       3650
 set_var EASYRSA_CERT_EXPIRE     3650
+set_var EASYRSA_CRL_DAYS        3650

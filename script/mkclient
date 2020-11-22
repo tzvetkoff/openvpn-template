@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/usr/bin/env bash
+# vim:ft=sh:ts=2:sts=2:sw=2:et
 
 set -e
 
@@ -22,6 +23,24 @@ server_path="${script_path}/../server"
 client_path="${script_path}/../client"
 
 #
+# Create directories
+#
+
+mkdir -p "${client_path}"
+mkdir -p "${server_path}/ccd"
+
+#
+# Figure out client IP address
+#
+
+client_ip="$(grep -R 'ifconfig-push' "${server_path}/ccd" | awk '{ print $2 }' | sort -rV | head -1)"
+client_ip="${client_ip:-10.8.0.1}"
+echo "${client_ip}"
+IFS='.' read -ra client_ip_arr <<< "${client_ip}"
+client_ip_arr[3]=$(( client_ip_arr[3]+1 ))
+client_ip="${client_ip_arr[0]}.${client_ip_arr[1]}.${client_ip_arr[2]}.${client_ip_arr[3]}"
+
+#
 # Issue certificates
 #
 
@@ -31,7 +50,6 @@ client_path="${script_path}/../client"
 # Create OpenVPN embedded config
 #
 
-mkdir -p "${client_path}"
 {
   cat "${server_path}/client.conf"
 
@@ -60,5 +78,4 @@ mkdir -p "${client_path}"
 # Create OpenVPN CCD file for static IP assignment
 #
 
-mkdir -p "${server_path}/ccd"
-echo 'ifconfig-push 10.8.0.234 255.255.255.0' >>"${server_path}/ccd/${client_name}"
+echo "ifconfig-push ${client_ip} 255.255.255.0" >>"${server_path}/ccd/${client_name}"

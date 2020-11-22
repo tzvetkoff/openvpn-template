@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/usr/bin/env bash
+# vim:ft=sh:ts=2:sts=2:sw=2:et
 
 set -e
 
@@ -28,7 +29,7 @@ client_path="${script_path}/../client"
 "${easyrsa_path}/easyrsa" revoke "${client_name}"
 
 #
-# Update revokation list
+# Update revocation list
 #
 
 "${easyrsa_path}/easyrsa" gen-crl

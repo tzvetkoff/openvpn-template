@@ -1,4 +1,4 @@
-# OpenVPN config
+# OpenVPN infrastructure template
 
 OpenVPN configs, scripts, keys, etc.
 
@@ -13,7 +13,7 @@ Client configs are generated in `./client`.
 ## Initial setup
 
 ``` sh
-./script/init ServerName ConfigPath
+./script/init ServerName ConfigRoot
 ```
 
 ## Adding a new client
