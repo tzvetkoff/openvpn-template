@@ -17,17 +17,19 @@ fi
 #
 
 script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root_path="$(cd "${script_path}/.." && pwd)"
+easyrsa_path="${root_path}/easyrsa"
+pki_path="${root_path}/pki"
+server_path="${root_path}/server"
+client_path="${root_path}/client"
+
 client_name="${1}"
-easyrsa_path="${script_path}/../easy-rsa"
-server_path="${script_path}/../server"
-client_path="${script_path}/../client"
 
 #
 # Create directories
 #
 
-mkdir -p "${client_path}"
-mkdir -p "${server_path}/ccd"
+mkdir -p "${pki_path}/tmp" "${server_path}/ccd" "${client_path}"
 
 #
 # Figure out client IP address
@@ -44,7 +46,7 @@ client_ip="${client_ip_arr[0]}.${client_ip_arr[1]}.${client_ip_arr[2]}.${client_
 # Issue certificates
 #
 
-"${easyrsa_path}/easyrsa" build-client-full "${client_name}" nopass
+"${easyrsa_path}/easyrsa" --pki-dir="${pki_path}" build-client-full "${client_name}" nopass
 
 #
 # Create OpenVPN embedded config
@@ -55,22 +57,22 @@ client_ip="${client_ip_arr[0]}.${client_ip_arr[1]}.${client_ip_arr[2]}.${client_
 
   echo '# ca.crt'
   echo '<ca>'
-  cat "${easyrsa_path}/pki/ca.crt"
+  cat "${pki_path}/ca.crt"
   echo '</ca>'
 
   echo '# client.crt'
   echo '<cert>'
-  cat "${easyrsa_path}/pki/issued/${client_name}.crt"
+  cat "${pki_path}/issued/${client_name}.crt"
   echo '</cert>'
 
   echo '# client.key'
   echo '<key>'
-  cat "${easyrsa_path}/pki/private/${client_name}.key"
+  cat "${pki_path}/private/${client_name}.key"
   echo '</key>'
 
   echo '# ta.key'
   echo '<tls-auth>'
-  cat "${easyrsa_path}/pki/ta.key"
+  cat "${pki_path}/ta.key"
   echo '</tls-auth>'
 } > "${client_path}/${client_name}.ovpn"
 

@@ -8,7 +8,7 @@ set -e
 #
 
 if [[ -z "${2}" ]]; then
-  echo "usage: ${0} <server-name> <config-root>"
+  echo "usage: ${0} <server-name> <config-root> [--fast]"
   exit 1
 fi
 
@@ -17,26 +17,29 @@ fi
 #
 
 script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root_path="$(cd "${script_path}/.." && pwd)"
+easyrsa_path="${root_path}/easyrsa"
+pki_path="${root_path}/pki"
+server_path="${root_path}/server"
+client_path="${root_path}/client"
+templates_path="${root_path}/templates"
+
 server_name="${1}"
 config_root="${2}"
-easyrsa_path="${script_path}/../easy-rsa"
-server_path="${script_path}/../server"
-client_path="${script_path}/../client"
-templates_path="${script_path}/../templates"
 
 #
 # Cleanup
 #
 
-rm -rf "${easyrsa_path}-git" "${easyrsa_path}" "${client_path}" "${server_path}" "${server_path}/ccd"
-mkdir -p "${easyrsa_path}" "${client_path}" "${server_path}" "${server_path}/ccd"
+rm -rf "${easyrsa_path}-git" "${easyrsa_path}" "${pki_path}" "${server_path}" "${client_path}"
+mkdir -p "${easyrsa_path}" "${pki_path}" "${server_path}" "${client_path}"
 
 #
-# Download EasyRSA
+# Download & build EasyRSA
 #
 
 mkdir -p "${easyrsa_path}-git"
-git clone 'git://github.com/OpenVPN/easy-rsa.git' "${easyrsa_path}-git"
+git clone 'https://github.com/OpenVPN/easy-rsa.git' "${easyrsa_path}-git"
 cd "${easyrsa_path}-git"
 rm -rf ./dist-staging
 ./build/build-dist.sh --no-windows --no-compress
@@ -48,8 +51,9 @@ chmod a+x "${easyrsa_path}/easyrsa"
 cp -R \
   ./dist-staging/unix/EasyRSA-git-development/x509-types \
   ./dist-staging/unix/EasyRSA-git-development/openssl-easyrsa.cnf \
-  "${templates_path}/vars" \
   "${easyrsa_path}"
+
+cp "${templates_path}/vars" "${pki_path}/vars"
 
 cd "${script_path}"
 rm -rf "${easyrsa_path}-git"
@@ -58,43 +62,54 @@ rm -rf "${easyrsa_path}-git"
 # Open editor to configure EasyRSA
 #
 
-${EDITOR:-vim} "${easyrsa_path}/vars"
+${EDITOR:-vim} "${pki_path}/vars"
+
+#
+# Since 3.1 EasyRSA has become a nightmare
+#
+
+export EASYRSA_BATCH='true'
+mkdir -p "${pki_path}/tmp"
 
 #
 # Initialize PKI
 #
 
-"${easyrsa_path}/easyrsa" init-pki
+"${easyrsa_path}/easyrsa" --pki-dir="${pki_path}" init-pki soft
 
 #
 # Build certificate authority
 #
 
-"${easyrsa_path}/easyrsa" build-ca
+"${easyrsa_path}/easyrsa" --pki-dir="${pki_path}" build-ca
 
 #
 # Issue server certificate
 #
 
-"${easyrsa_path}/easyrsa" build-server-full server nopass
+"${easyrsa_path}/easyrsa" --pki-dir="${pki_path}" build-server-full server nopass
 
 #
 # Generate Diffie-Hellman parameters
 #
 
-"${easyrsa_path}/easyrsa" gen-dh
+if [[ "${3}" = '--fast' ]]; then
+  openssl dhparam -out "${pki_path}/dh.pem" -dsaparam 4096
+else
+  "${easyrsa_path}/easyrsa" --pki-dir="${pki_path}" gen-dh
+fi
 
 #
 # Generate certificate revocation list
 #
 
-"${easyrsa_path}/easyrsa" gen-crl
+"${easyrsa_path}/easyrsa" --pki-dir="${pki_path}" gen-crl
 
 #
 # Generate shared TLS authentication key
 #
 
-openvpn --genkey --secret "${easyrsa_path}/pki/ta.key"
+openvpn --genkey secret "${pki_path}/ta.key"
 
 #
 # Server configuration

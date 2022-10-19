@@ -17,22 +17,31 @@ fi
 #
 
 script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root_path="$(cd "${script_path}/.." && pwd)"
+easyrsa_path="${root_path}/easyrsa"
+pki_path="${root_path}/pki"
+server_path="${root_path}/server"
+client_path="${root_path}/client"
+
 client_name="${1}"
-easyrsa_path="${script_path}/../easy-rsa"
-server_path="${script_path}/../server"
-client_path="${script_path}/../client"
+
+#
+# Create directories
+#
+
+mkdir -p "${pki_path}/tmp"
 
 #
 # Revoke certificates
 #
 
-"${easyrsa_path}/easyrsa" revoke "${client_name}"
+"${easyrsa_path}/easyrsa" --pki-dir="${pki_path}" revoke "${client_name}"
 
 #
 # Update revocation list
 #
 
-"${easyrsa_path}/easyrsa" gen-crl
+"${easyrsa_path}/easyrsa" --pki-dir="${pki_path}" gen-crl
 
 #
 # Remove leftovers

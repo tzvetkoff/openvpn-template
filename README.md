@@ -4,7 +4,7 @@ OpenVPN configs, scripts, keys, etc.
 
 ## Layout
 
-Certificates, keys, and other PKI related stuff reside inside `./easy-rsa/pki`.
+Certificates, keys, and other PKI related stuff reside inside `./pki`.
 
 Server configs are placed inside `./server`.
 
