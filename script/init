@@ -7,8 +7,8 @@ set -e
 # Arguments
 #
 
-if [[ -z "${2}" ]]; then
-  echo "usage: ${0} <server-name> <config-root> [--fast]"
+if [[ -z "${1}" ]]; then
+  echo "usage: ${0} [--fast] <server-name> [config-root]"
   exit 1
 fi
 
@@ -24,8 +24,25 @@ server_path="${root_path}/server"
 client_path="${root_path}/client"
 templates_path="${root_path}/templates"
 
+fast=false
+if [[ "${1}" = '-f' || "${1}" == --fast ]]; then
+  fast=true
+  shift
+fi
+
 server_name="${1}"
-config_root="${2}"
+config_root="${2-/etc/openvpn}"
+
+#
+# Template
+#
+
+template_vars=("server_name=${server_name}" "config_root=${config_root}")
+template_keys='${server_name} ${config_root}'
+
+template() {
+  env -i "${template_vars[@]}" envsubst "${template_keys}" < "${1}"
+}
 
 #
 # Cleanup
@@ -93,7 +110,7 @@ mkdir -p "${pki_path}/tmp"
 # Generate Diffie-Hellman parameters
 #
 
-if [[ "${3}" = '--fast' ]]; then
+if [[ "${fast}" = 'true' ]]; then
   openssl dhparam -out "${pki_path}/dh.pem" -dsaparam 4096
 else
   "${easyrsa_path}/easyrsa" --pki-dir="${pki_path}" gen-dh
@@ -115,16 +132,10 @@ openvpn --genkey secret "${pki_path}/ta.key"
 # Server configuration
 #
 
-sed \
-  -e "s!ServerName!${server_name}!g" \
-  -e "s!ConfigRoot!${config_root}!g" \
-  "${templates_path}/server.conf" > "${server_path}/server.conf"
+template "${templates_path}/server.conf" > "${server_path}/server.conf"
 
 #
-# Server template
+# Client template
 #
 
-sed \
-  -e "s!ServerName!${server_name}!g" \
-  -e "s!ConfigRoot!${config_root}!g" \
-  "${templates_path}/client.conf" > "${server_path}/client.conf"
+template "${templates_path}/client.conf" > "${server_path}/client.conf"

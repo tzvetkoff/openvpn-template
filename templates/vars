@@ -8,9 +8,11 @@ if [ -z "${EASYRSA_CALLER}" ]; then
   return 1
 fi
 
-set_var EASYRSA                 "$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
+ROOT="${BASH_SOURCE[0]%/*/*}"
+
+set_var EASYRSA                 "${ROOT}/easyrsa"
 set_var EASYRSA_OPENSSL         "openssl"
-set_var EASYRSA_PKI             "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+set_var EASYRSA_PKI             "${ROOT}/pki"
 set_var EASYRSA_TEMP_DIR        "${EASYRSA_PKI}/tmp"
 
 set_var EASYRSA_REQ_COUNTRY     "US"
